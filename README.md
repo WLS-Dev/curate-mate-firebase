@@ -1,2 +1,2 @@
 # curate-mate-firebase
-Curate Mate Google Assistant Action backend web-hook fullfilment
+Curate Mate Google Assistant Action backend web-hook fulfilment

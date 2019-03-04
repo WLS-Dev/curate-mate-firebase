@@ -1,0 +1,39 @@
+function generate_item_contents(conv, input_list) {
+  /*
+    Given a 'current_target', attempt to retrieve post contents!
+  */
+  return new Promise((resolve, reject) => {
+    let item_contents = []; // Creating carousel item holder
+
+    // We've got the required exchange data to produce a carousel!
+    for (let index = 0; index < input_list.length; index++) {
+      // Iterate over movies in GOAT list
+      const current_input_target = input_list[index];
+      const current_author = current_input_target.result_author;
+      const current_permalink = current_input_target.result_permlink;
+
+
+      return get_content(current_author, current_permalink)
+      .then(result => {
+        item_contents[index] = {"children": result.children, "net_votes": result.net_votes, "total_payout_value": result.total_payout_value, "total_pending_payout_value": result.total_pending_payout_value};
+      })
+      .catch(error_message => {
+        console.warn(`Failure: ${error_message}`);
+      });
+      //item_contents[index] = get_content(current_author, current_permalink)[0];
+    }
+
+    return resolve(item_contents);
+    /*
+    if (item_contents.length > 2) {
+      // We've generated list items
+      console.warn(item_contents);
+      return resolve(item_contents);
+    } else {
+      // If we didn't build the list items correctly this will trigger
+      console.warn(item_contents);
+      return reject(new Error('Failed to generate item contents'));
+    }
+    */
+  });
+}
