@@ -7,6 +7,7 @@ const functions = require('firebase-functions'); // Mandatory when using firebas
 var striptags = require('striptags'); // For removing all text
 const removeMd = require('remove-markdown'); // For removing markdown from body
 const moment = require('moment'); // For timestamps
+const i18n = require('@sfeir/actions-on-google-i18n');
 
 let wls = require("@whaleshares/wlsjs");
 wls.api.setOptions({ url: 'wss://whaleshares.io/ws' }); // Whaleshares API URL. TODO: Configure backup servers
@@ -23,6 +24,14 @@ const app = dialogflow({
 });
 dashbot.configHandler(app);
 
+i18n
+  .configure({
+    directory: `${__dirname}/src/locales`,
+    defaultFile: `${__dirname}/src/locales/index.json`,
+    defaultLocale: 'en-US',
+  })
+  .use(app);// For enabling i18n plugin
+
 function catch_error(conv, error_message, intent) {
   /*
   Generic function for reporting errors & providing error handling for the user.
@@ -34,11 +43,7 @@ function catch_error(conv, error_message, intent) {
   }
 
   return conv.close(
-      new SimpleResponse({
-      // If we somehow fail, do so gracefully!
-      speech: "An unexpected error was encountered! Let's end our Blockchain Activity session for now.",
-      text: "An unexpected error was encountered! Let's end our Blockchain Activity session for now."
-    })
+      new SimpleResponse(conv.__('catch_error', {}))
   );
 }
 
@@ -53,14 +58,14 @@ function fallback_body_contents (conv, text_target, speech_target) {
     if ((conv.data).hasOwnProperty(text_target)) {
       fallback_text = conv.data[text_target];
     } else {
-      fallback_text = 'Sorry, what do you want to do next?';
+      fallback_text = conv.__('fallback_next', {});
     }
 
     if ((conv.data).hasOwnProperty(speech_target)) {
       // The
       fallback_speech = conv.data[speech_target];
     } else {
-      fallback_speech = '<speak>Sorry, what do you want to do next?</speak>';
+      fallback_speech = `<speak>${conv.__('fallback_next', {})}</speak>`;
     }
 
     let ask_contents = [];
@@ -75,10 +80,7 @@ function fallback_body_contents (conv, text_target, speech_target) {
         */
         const reminder_contents = `Still using curate mate? If not please quit.`; // How we'll remind the user they're using our bot!
         ask_contents.push(
-          new SimpleResponse({
-            speech: `<speak>${reminder_contents}</speak>`,
-            text: reminder_contents
-          })
+          new SimpleResponse(conv.__('fallback_idle', {}))
         );
       }
     }
@@ -111,7 +113,7 @@ function fallback_body (conv, fallback_name) {
   if (conv.data.fallbackCount > 1) {
     // Google best practice is to quit upon the 3rd attempt
     //console.log("User misunderstood 3 times, quitting!");
-    return conv.close("Sorry, I'm having difficulty understanding. Let's try again later? Goodbye.");
+    return conv.close(conv.__('fallback_body_default', {}));
   } else {
     // Within fallback attempt limit (<3)
     const text_target = 'fallback_text_' + (conv.data.fallbackCount).toString();
@@ -164,13 +166,14 @@ function genericFallback(conv, intent_name) {
   }
 
   if ((!(conv.data).hasOwnProperty('fallback_text_0')) || (typeof(conv.data.fallback_text_0) === "undefined")) {
-    const fallback_messages = [
-      "Sorry, what do you want to do next?",
-      "I didn't catch that. What do you want to do next?"
-    ];
-    const suggestions = [`🐋 WLS Tag List`, '🆘 Help', '🚪 Quit'];
-    store_fallback_response(conv, fallback_messages, suggestions);
-
+    store_fallback_response(
+      conv,
+      [
+        conv.__('fallback_default_0', {}),
+        conv.__('fallback_default_1', {})
+      ],
+      (conv.__('fallback_suggestions', {})).split(",")
+    );
     return fallback_body(conv, fallback_name);
   } else {
     /*
@@ -596,7 +599,7 @@ function generate_browsing_carousel(input_list, post_content_list) {
       "category": "bitshares",
       "parent_author": "",
       "parent_permlink": "bitshares",
-      "title": "Blockchain Activity Google Assistant agent updates",
+      "title": "Curate Mate Google Assistant agent updates",
       "json_metadata": "{\"tags\":[\"bitshares\",\"cryptocurrency\",\"programming\",\"eos\",\"google\"],\"image\":[\"https://whaleshares.io/imageupload_data/f729148ba00002b5a8f6f32281ddb0a355e833ff\",\"https://whaleshares.io/imageupload_data/84c205f7787b41c73ad31e6284f82c50d9551476\",\"https://whaleshares.io/imageupload_data/4a1ecdd7b3143dec6a532ee6c45fa7397f71f4c8\",\"https://whaleshares.io/imageupload_data/218126c5250274cc47988eae0f47b9e758e0835f\",\"https://whaleshares.io/imageupload_data/bc159ec145fe968f94a7074ab3ce0e1d1aa9ef55\",\"https://whaleshares.io/imageupload_data/77a737053cbed257cf258d84f5d172f839c23176\",\"https://cdn.steemitimages.com/DQmZm7cSeXpCRizSDJSiUJwPHeVSgPhrF8rTeMtmqatQx5S/image.png\"],\"links\":[\"https://assistant.google.com/services/a/uid/0000003e08d8dba9?hl=en-US&source=web\",\"https://whaleshares.io/bitshares/@customminer/blockchain-activity-google-assistant-agent-published-say-ok-google-talk-to-blockchain-activity\"],\"app\":\"steemit/0.1\",\"format\":\"markdown\"}",
       "last_update": "2018-08-20T13:59:42",
       "created": "2018-08-19T20:32:09",
@@ -625,7 +628,7 @@ function generate_browsing_carousel(input_list, post_content_list) {
       "allow_curation_rewards": true,
       "beneficiaries": [],
       "url": "/bitshares/@cm-steem/blockchain-activity-google-assistant-agent-updates",
-      "root_title": "Blockchain Activity Google Assistant agent updates",
+      "root_title": "Curate Mate Google Assistant agent updates",
       "pending_payout_value": "0.000 SBD",
       "total_pending_payout_value": "0.000 STEEM",
       */
@@ -863,7 +866,7 @@ function handle_no_contexts (conv, source_name) {
 
   const fallback_messages = [
     "Sorry, what was that?",
-    "I didn't catch that, what do you want movie mediator to do for you?"
+    "I didn't catch that, what do you want curate mate to do for you?"
   ];
 
   const suggestions = [`🐋 WLS Tag List`, '🆘 Help', `🚪 Quit`];
