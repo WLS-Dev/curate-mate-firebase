@@ -78,7 +78,6 @@ function fallback_body_contents (conv, text_target, speech_target) {
           More than 10 mins have passed since the user used the bot.
           It's likely they're trying to do something unrelated, let's remind them they're using the bot!
         */
-        const reminder_contents = `Still using curate mate? If not please quit.`; // How we'll remind the user they're using our bot!
         ask_contents.push(
           new SimpleResponse(conv.__('fallback_idle', {}))
         );
@@ -90,7 +89,7 @@ function fallback_body_contents (conv, text_target, speech_target) {
         speech: fallback_speech,
         text: fallback_text
       }),
-      new Suggestions([`🐋 WLS Tag List`, '🆘 Help', '🚪 Quit'])
+      new Suggestions((conv.__('fallback_suggestions', {})).split(","))
     );
 
     if (ask_contents.length > 0) {
@@ -215,38 +214,18 @@ app.intent('Welcome', (conv) => {
     let greeting;
     if (typeof(conv.user.storage.userId) !== 'undefined') {
       // The user has been seen before.
-      const greetings = [
-        'Hey there, great to see you again.',
-        'Welcome back.',
-        'Hey, good to have you back.',
-        'Oh hey, welcome back mate!',
-        'Yo, welcome back!'
-      ];
-      greeting = greetings[Math.floor(Math.random() * greetings.length)]; // Randomly select one of the greetings
+      greeting = conv.__('Welcome_greeting_seen', {}); // Randomly select one of the greetings
     } else {
       // Never seen the user before
-      const greetings = [
-        `Welcome to curate mate.`
-      ];
-      greeting = greetings[Math.floor(Math.random() * greetings.length)]; // Randomly select one of the greetings
+      greeting = conv.__('Welcome_greeting_new_user', {}); // Randomly select one of the greetings
     }
-
-    const post_asks = [
-      `I can help you navigate user created whaleshares content, just provide a topic and I'll fetch trending results.`,
-      `Wanting to navigate some user created whaleshares content? Just provide a topic and I'll fetch some results.`,
-      `For what topic do you want the latest trending whaleshares content?`,
-      `So, you're interested in whaleshares? Provide me a topic and I'll serve up the latest trending content!`,
-      `Alright then, what whaleshares content do you want?`,
-      `What whaleshares topic do you want to read about?`
-    ];
-    let post_ask = post_asks[Math.floor(Math.random() * post_asks.length)];
 
     const fallback_messages = [
       "Sorry, what do you want to do next?",
       "I didn't catch that. What do you want to do next?"
     ];
-    const suggestions = processed_results[1].concat([`🐋 WLS Tag List`, '🆘 Help', '🚪 Quit']);
-    store_fallback_response(conv, fallback_messages, suggestions);
+    const suggestions = (conv.__('Welcome_fallback_suggestions', {trending_tag: processed_results[1]})).split(",");
+    store_fallback_response(conv, [conv.__('Welcome_fallback_default_0', {}), conv.__('Welcome_fallback_default_1', {})], suggestions);
 
     return conv.ask(
       new SimpleResponse({
@@ -254,10 +233,10 @@ app.intent('Welcome', (conv) => {
         text: `${greeting}`
       }),
       new SimpleResponse({
-        speech: `<speak>${post_ask}<break time="0.45s" /></speak>`,
-        text: `${post_ask}`
+        speech: `<speak>${conv.__('Welcome_outro', {})}<break time="0.45s" /></speak>`,
+        text: `${conv.__('Welcome_outro', {})}`
       }),
-      new Suggestions(processed_results[1], `🐋 WLS Tag List`, '🆘 Help', '🚪 Quit')
+      new Suggestions(suggestions)
     );
   })
   .catch(error_message => {
@@ -267,12 +246,12 @@ app.intent('Welcome', (conv) => {
 
 });
 
-function getGetOrdinal(n) {
+function GetOrdinal(n) {
   /*
     Takes number, returns ordinal equivelant.
     Source: https://stackoverflow.com/a/31615643/9065060
   */
-  var s=["th","st","nd","rd"],
+  var s=[(conv.__('', {})).split(",")],
   v=n%100;
   return n+(s[(v-20)%10]||s[v]||s[0]);
  }
@@ -367,14 +346,14 @@ function create_tag_list (tags_json) {
               items[INDEX_NUM] = {
                 synonyms: [
                   `${tags_json[index].name}`,
-                  `${getGetOrdinal(index)}`
+                  `${GetOrdinal(index)}`
                 ],
-                title: `🐳 ${tags_json[index].name}`,
+                title: `${conv.__('wls_emotes', {})} ${tags_json[index].name}`,
                 //description: `Read about '${tags_json[index].name}' on Whaleshares`,
-                description: `'${tags_json[index].name}' has ${tags_json[index].top_posts} posts, ${tags_json[index].comments} comments and ${tags_json[index].total_payouts} rewards.`,
+                description: conv.__('create_tag_list_description', {}),
                 image: new Image({
                   url: 'https://i.imgur.com/dDEwnx7.png',
-                  alt: 'WLS Logo',
+                  alt: conv.__('create_tag_list_img_alt', {}),
                 })
               };
             }
@@ -420,15 +399,12 @@ app.intent('Tag_List', (conv) => {
     });
 
     return conv.ask(
-      new SimpleResponse({
-        speech: `<speak>Here's the latest trending whaleshares tags.</speak>`,
-        text: `Here's the latest trending whaleshares tags.`
-      }),
+      new SimpleResponse(conv.__('Tag_List_simple_response', {})),
       new List({
-        title: 'Trending Whaleshares tags',
+        title: conv.__('Tag_List_title', {}),
         items: tag_list
       }),
-      new Suggestions(['➕ More tags', '🆘 Help', '🚪 Quit'])
+      new Suggestions((conv.__('Tag_List_suggestions', {})).split(","))
     );
   })
   .catch(error_message => {
@@ -466,8 +442,6 @@ app.intent('show_more_tags', (conv) => {
     const original_tag_json = current_results[0];
     const tag_list = current_results[1];
 
-    //console.warn(tag_list);
-
     if (Object.keys(tag_list).length > 2) {
       // Minimum requirement
       conv.contexts.set('tag_list', 1, {
@@ -478,13 +452,13 @@ app.intent('show_more_tags', (conv) => {
       var simple_response_contents;
       if (last_known_tag === "") {
         simple_response_contents = {
-          speech: `<speak>Here's the latest trending whaleshares tags.</speak>`,
-          text: `Here's the latest trending whaleshares tags.`
+          speech: `<speak>${conv.__('Tag_List_simple_response', {})}</speak>`,
+          text: conv.__('Tag_List_simple_response', {})
         };
       } else {
         simple_response_contents = {
-          speech: `<speak>Here's the next ${Object.keys(tag_list).length} trending whaleshares tags.</speak>`,
-          text: `Here's the next ${Object.keys(tag_list).length} trending whaleshares tags.`
+          speech: `<speak>${conv.__('More_Tags_response_0', {quantity_tags: Object.keys(tag_list).length})}</speak>`,
+          text: conv.__('More_Tags_response_0', {quantity_tags: Object.keys(tag_list).length})
         };
       }
 
@@ -492,13 +466,13 @@ app.intent('show_more_tags', (conv) => {
         new SimpleResponse(simple_response_contents),
         new SimpleResponse({
           speech: `<speak></speak>`,
-          text: `⚠ Note: These tags update more frequently than Curate Mate's supported topics; some tags may not work until the next scheduled topic entity update.`
+          text: conv.__('More_Tags_response_1', {})
         }),
         new List({
-          title: 'Trending Whaleshares tags',
+          title: conv.__('Tag_List_title', {}),
           items: tag_list
         }),
-        new Suggestions('➕ More tags', '🆘 Help', '🚪 Quit')
+        new Suggestions((conv.__('Tag_List_title', {})).split(","))
       );
     } else {
       // We have insufficient results - let's tell them they reached the end of the line!
